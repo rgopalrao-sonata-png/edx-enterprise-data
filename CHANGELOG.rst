@@ -14,6 +14,14 @@ Change Log
 Unreleased
 ----------
 
+[10.22.4] - 2026-04-27
+-----------------------
+  * chore: bump package version to 10.22.4 to fix failed PyPI publish for 10.22.3 (version was not bumped in __init__.py before tagging)
+
+[10.22.3] - 2026-04-24
+-----------------------
+  * fix: add ``snowflake-connector-python`` to base requirements and improve Snowflake logging [ENT-11183]
+
 [10.22.2] - 2026-04-21
 -----------------------
   * feat: add ``course_progress`` field to v1 learner enrollment API and CSV export
