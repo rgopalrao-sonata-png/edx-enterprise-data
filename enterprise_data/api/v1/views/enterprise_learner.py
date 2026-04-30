@@ -6,6 +6,7 @@ from datetime import date, timedelta
 from logging import getLogger
 from uuid import UUID
 
+from openedx.core.djangoapps.content.course_overviews.models import CourseOverview  # pylint: disable=import-error
 from rest_framework import filters, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
@@ -14,6 +15,7 @@ from rest_framework.response import Response
 
 from django.conf import settings
 from django.core.paginator import Paginator
+from django.db import connection
 from django.db.models import Count, Exists, Max, OuterRef, Prefetch, Q, Subquery, Value
 from django.db.models.fields import IntegerField
 from django.db.models.functions import Coalesce
@@ -70,6 +72,7 @@ class EnterpriseLearnerEnrollmentViewSet(EnterpriseViewSetMixin, viewsets.ReadOn
         'enterprise_customer_uuid', 'enterprise_sso_uid', 'created', 'course_api_url', 'total_learning_time_hours',
         'is_subsidy', 'course_product_line', 'budget_id',
         'enterprise_flex_group_name', 'enterprise_flex_group_uuid',
+        'course_passing_grade',
         'course_progress',
     ]
 
@@ -96,14 +99,37 @@ class EnterpriseLearnerEnrollmentViewSet(EnterpriseViewSetMixin, viewsets.ReadOn
 
         # TODO: Created a ticket ENT0-9531 to add the cache on this viewset
 
-        # Add a synthetic placeholder column so the serialized response shape
-        # always includes `course_progress`; real values are merged in later.
-        enrollments = EnterpriseLearnerEnrollment.objects.filter(
-            enterprise_customer_uuid=enterprise_customer_uuid
-        ).extra(select={'course_progress': 'NULL'})
+        # Add synthetic placeholder columns so the serialized response shape
+        # always includes `course_progress` and `course_passing_grade`.
+        enrollments = self._get_enrollments_with_course_metadata(enterprise_customer_uuid)
+
         enrollments = self.apply_filters(enrollments)
 
         return enrollments
+
+    def _get_enrollments_with_course_metadata(self, enterprise_customer_uuid):
+        """
+        Build the enrollments queryset and include synthetic metadata fields.
+
+        Adds ``course_progress`` as a placeholder and joins CourseOverview for
+        ``course_passing_grade`` when the CourseOverview table is present.
+        """
+        enrollments = EnterpriseLearnerEnrollment.objects.filter(
+            enterprise_customer_uuid=enterprise_customer_uuid
+        ).extra(select={'course_progress': 'NULL'})
+
+        course_overview_table = CourseOverview._meta.db_table
+        has_course_overview_table = course_overview_table in connection.introspection.table_names()
+        if not has_course_overview_table:
+            return enrollments.extra(select={'course_passing_grade': 'NULL'})
+
+        # Use an explicit INNER JOIN to fetch passing grade from CourseOverview.
+        enrollment_table = EnterpriseLearnerEnrollment._meta.db_table
+        return enrollments.extra(
+            tables=[course_overview_table],
+            where=[f'{course_overview_table}.id = {enrollment_table}.courserun_key'],
+            select={'course_passing_grade': f'{course_overview_table}.lowest_passing_grade'},
+        )
 
     def list(self, request, *args, **kwargs):
         """

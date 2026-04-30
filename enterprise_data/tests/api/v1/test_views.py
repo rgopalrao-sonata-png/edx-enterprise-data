@@ -3,7 +3,10 @@ Tests for views in the `enterprise_data` module.
 """
 
 import datetime
+import importlib
 import os
+import sys
+import types
 from unittest import mock
 from uuid import UUID, uuid4
 
@@ -31,6 +34,47 @@ from enterprise_data.tests.test_utils import (
 )
 from enterprise_data_roles.constants import ENTERPRISE_DATA_ADMIN_ROLE
 from enterprise_data_roles.models import EnterpriseDataFeatureRole, EnterpriseDataRoleAssignment
+
+
+def _ensure_course_overview_import_for_tests():
+    """
+    Provide a minimal ``openedx...course_overviews.models`` shim for local
+    unit tests when full edx-platform Python dependencies are unavailable.
+    """
+    try:
+        course_overview_models = importlib.import_module(
+            'openedx.core.djangoapps.content.course_overviews.models'
+        )
+        if getattr(course_overview_models, 'CourseOverview', None) is not None:
+            return
+    except ImportError:
+        pass
+
+    module_names = [
+        'openedx',
+        'openedx.core',
+        'openedx.core.djangoapps',
+        'openedx.core.djangoapps.content',
+        'openedx.core.djangoapps.content.course_overviews',
+    ]
+    for module_name in module_names:
+        if module_name not in sys.modules:
+            sys.modules[module_name] = types.ModuleType(module_name)
+
+    models_module_name = 'openedx.core.djangoapps.content.course_overviews.models'
+    models_module = types.ModuleType(models_module_name)
+
+    class _Meta:
+        db_table = 'course_overviews_courseoverview'
+
+    class DummyCourseOverview:
+        _meta = _Meta()
+
+    models_module.CourseOverview = DummyCourseOverview
+    sys.modules[models_module_name] = models_module
+
+
+_ensure_course_overview_import_for_tests()
 
 
 @ddt.ddt
