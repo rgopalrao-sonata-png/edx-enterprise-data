@@ -6,7 +6,11 @@ from datetime import date, timedelta
 from logging import getLogger
 from uuid import UUID
 
-from openedx.core.djangoapps.content.course_overviews.models import CourseOverview  # pylint: disable=import-error
+try:
+    from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
+except ImportError:
+    CourseOverview = None
+
 from rest_framework import filters, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
@@ -117,6 +121,9 @@ class EnterpriseLearnerEnrollmentViewSet(EnterpriseViewSetMixin, viewsets.ReadOn
         enrollments = EnterpriseLearnerEnrollment.objects.filter(
             enterprise_customer_uuid=enterprise_customer_uuid
         ).extra(select={'course_progress': 'NULL'})
+
+        if CourseOverview is None:
+            return enrollments.extra(select={'course_passing_grade': 'NULL'})
 
         course_overview_table = CourseOverview._meta.db_table
         has_course_overview_table = course_overview_table in connection.introspection.table_names()

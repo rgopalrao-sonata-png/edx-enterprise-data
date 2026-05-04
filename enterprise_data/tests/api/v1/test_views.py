@@ -336,6 +336,31 @@ class TestEnterpriseLearnerEnrollmentViewSet(JWTTestMixin, APITransactionTestCas
         self.assertIn('course_progress', content)
         self.assertIn('0.87', content)
 
+    def test_course_passing_grade_field_in_response(self):
+        """Test that course_passing_grade field is included in the API response"""
+        enterprise_learner = EnterpriseLearnerFactory(
+            enterprise_customer_uuid=self.enterprise_id,
+            user_email='student@example.com',
+        )
+        EnterpriseLearnerEnrollmentFactory(
+            enterprise_customer_uuid=self.enterprise_id,
+            is_consent_granted=True,
+            enterprise_user_id=enterprise_learner.enterprise_user_id,
+            user_email='student@example.com',
+            courserun_key='course-v1:edX+Demo+2024',
+        )
+
+        url = reverse('v1:enterprise-learner-enrollment-list', kwargs={'enterprise_id': self.enterprise_id})
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.json()['results']
+        self.assertEqual(len(results), 1)
+        # Verify course_passing_grade field is present in the response
+        self.assertIn('course_passing_grade', results[0])
+        # The field will be null since CourseOverview is mocked in tests
+        self.assertIsNone(results[0]['course_passing_grade'])
+
 
 @ddt.ddt
 @mark.django_db
