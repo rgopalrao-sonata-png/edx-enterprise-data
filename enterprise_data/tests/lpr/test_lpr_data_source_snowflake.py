@@ -77,10 +77,15 @@ class TestGetCourseProgressMap:
         assert _source().get_course_progress_map(ENTERPRISE_UUID, []) == {}
         assert _source().get_course_progress_map(ENTERPRISE_UUID, [{'user_email': '', 'courserun_key': ''}]) == {}
 
+    @patch('enterprise_data.api.v1.views.lpr_data_source_snowflake.cache')
     @patch.object(SnowflakeCourseProgressSource, '_get_connection')
     @patch.object(SnowflakeCourseProgressSource, '_internal_table', return_value=DEFAULT_TABLE)
-    def test_executes_expected_sql_and_params(self, _table, mock_conn_factory):
-        ctx, cursor = _mock_ctx_and_cursor(fetchall=[('alice@example.com', 'course-v1:Org+Course+Run', 0.8)])
+    def test_executes_expected_sql_and_params(self, _table, mock_conn_factory, mock_cache):
+        mock_cache.get.return_value = MagicMock(is_found=False)
+        ctx, cursor = _mock_ctx_and_cursor(fetchall=[
+            ('alice@example.com', 'course-v1:Org+Course+Run', 0.8),
+            ('carol@example.com', 'course-v1:Org+Other+Run', 0.4),
+        ])
         mock_conn_factory.return_value = ctx
 
         enrollments = [
@@ -94,15 +99,32 @@ class TestGetCourseProgressMap:
         assert 'COURSE_PROGRESS' in sql
         assert 'USER_EMAIL, COURSERUN_KEY' in sql
         assert NORMALIZED_UUID == params[0]
-        assert params[1:] == [
-            'alice@example.com', 'course-v1:Org+Course+Run',
-            'bob@example.com', 'course-v1:Org+Other+Run',
-        ]
+        assert len(params) == 1
         assert result == {('alice@example.com', 'course-v1:Org+Course+Run'): 0.8}
+        mock_cache.set.assert_called_once()
 
+    @patch('enterprise_data.api.v1.views.lpr_data_source_snowflake.cache')
+    @patch.object(SnowflakeCourseProgressSource, '_get_connection')
+    def test_returns_results_from_enterprise_cache(self, mock_conn_factory, mock_cache):
+        mock_cache.get.return_value = MagicMock(
+            is_found=True,
+            value={('alice@example.com', 'course-v1:Org+Course+Run'): 0.8},
+        )
+
+        result = _source().get_course_progress_map(
+            ENTERPRISE_UUID,
+            [{'user_email': 'Alice@Example.com', 'courserun_key': 'course-v1:Org+Course+Run'}],
+        )
+
+        assert result == {('alice@example.com', 'course-v1:Org+Course+Run'): 0.8}
+        mock_conn_factory.assert_not_called()
+        mock_cache.set.assert_not_called()
+
+    @patch('enterprise_data.api.v1.views.lpr_data_source_snowflake.cache')
     @patch.object(SnowflakeCourseProgressSource, '_get_connection')
     @patch.object(SnowflakeCourseProgressSource, '_internal_table', return_value=DEFAULT_TABLE)
-    def test_cursor_and_connection_closed_on_success(self, _table, mock_conn_factory):
+    def test_cursor_and_connection_closed_on_success(self, _table, mock_conn_factory, mock_cache):
+        mock_cache.get.return_value = MagicMock(is_found=False)
         ctx, cursor = _mock_ctx_and_cursor()
         mock_conn_factory.return_value = ctx
         _source().get_course_progress_map(
@@ -112,9 +134,11 @@ class TestGetCourseProgressMap:
         cursor.close.assert_called_once()
         ctx.close.assert_called_once()
 
+    @patch('enterprise_data.api.v1.views.lpr_data_source_snowflake.cache')
     @patch.object(SnowflakeCourseProgressSource, '_get_connection')
     @patch.object(SnowflakeCourseProgressSource, '_internal_table', return_value=DEFAULT_TABLE)
-    def test_cursor_and_connection_closed_on_execute_error(self, _table, mock_conn_factory):
+    def test_cursor_and_connection_closed_on_execute_error(self, _table, mock_conn_factory, mock_cache):
+        mock_cache.get.return_value = MagicMock(is_found=False)
         ctx, cursor = _mock_ctx_and_cursor()
         cursor.execute.side_effect = RuntimeError('Snowflake error')
         mock_conn_factory.return_value = ctx

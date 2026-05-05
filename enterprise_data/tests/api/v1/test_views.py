@@ -381,66 +381,52 @@ class TestEnterpriseLearnerEnrollmentViewSet(JWTTestMixin, APITransactionTestCas
         with_progress.extra.assert_called_once_with(select={'course_passing_grade': 'NULL'})
         self.assertEqual(result, with_passing_grade)
 
-    @mock.patch('enterprise_data.api.v1.views.enterprise_learner.EnterpriseLearnerEnrollment.objects.filter')
-    @mock.patch('enterprise_data.api.v1.views.enterprise_learner.connection.introspection.table_names')
+    @mock.patch('enterprise_data.api.v1.views.enterprise_learner.cache')
     @mock.patch('enterprise_data.api.v1.views.enterprise_learner.CourseOverview')
-    def test_get_enrollments_with_course_metadata_without_course_overview_table(
+    @mock.patch('enterprise_data.api.v1.views.enterprise_learner.connection.introspection.table_names')
+    def test_enrich_course_passing_grade_uses_cache(
         self,
-        mock_course_overview,
         mock_table_names,
-        mock_filter,
+        mock_course_overview,
+        mock_cache,
     ):
         viewset = EnterpriseLearnerEnrollmentViewSet()
-        enrollments = mock.Mock()
-        with_progress = mock.Mock()
-        with_passing_grade = mock.Mock()
-
-        mock_course_overview._meta.db_table = 'course_overviews_courseoverview'
-        mock_table_names.return_value = []
-        mock_filter.return_value = enrollments
-        enrollments.extra.return_value = with_progress
-        with_progress.extra.return_value = with_passing_grade
-
-        result = viewset._get_enrollments_with_course_metadata(self.enterprise_id)  # pylint: disable=protected-access
-
-        mock_filter.assert_called_once_with(enterprise_customer_uuid=self.enterprise_id)
-        enrollments.extra.assert_called_once_with(select={'course_progress': 'NULL'})
-        mock_table_names.assert_called_once_with()
-        with_progress.extra.assert_called_once_with(select={'course_passing_grade': 'NULL'})
-        self.assertEqual(result, with_passing_grade)
-
-    @mock.patch('enterprise_data.api.v1.views.enterprise_learner.EnterpriseLearnerEnrollment.objects.filter')
-    @mock.patch('enterprise_data.api.v1.views.enterprise_learner.connection.introspection.table_names')
-    @mock.patch('enterprise_data.api.v1.views.enterprise_learner.CourseOverview')
-    def test_get_enrollments_with_course_metadata_with_course_overview_table(
-        self,
-        mock_course_overview,
-        mock_table_names,
-        mock_filter,
-    ):
-        viewset = EnterpriseLearnerEnrollmentViewSet()
-        enrollments = mock.Mock()
-        with_progress = mock.Mock()
-        with_joined_course_metadata = mock.Mock()
-
         mock_course_overview._meta.db_table = 'course_overviews_courseoverview'
         mock_table_names.return_value = ['course_overviews_courseoverview']
-        mock_filter.return_value = enrollments
-        enrollments.extra.return_value = with_progress
-        with_progress.extra.return_value = with_joined_course_metadata
+        mock_cache.get.return_value = mock.Mock(is_found=True, value=0.7)
+        rows = [{'courserun_key': 'course-v1:edX+Demo+2024', 'course_passing_grade': None}]
 
-        result = viewset._get_enrollments_with_course_metadata(self.enterprise_id)  # pylint: disable=protected-access
-        enrollment_table = EnterpriseLearnerEnrollment._meta.db_table
+        result = viewset._enrich_course_passing_grade_rows(rows)  # pylint: disable=protected-access
 
-        mock_filter.assert_called_once_with(enterprise_customer_uuid=self.enterprise_id)
-        enrollments.extra.assert_called_once_with(select={'course_progress': 'NULL'})
+        self.assertEqual(result[0]['course_passing_grade'], 0.7)
         mock_table_names.assert_called_once_with()
-        with_progress.extra.assert_called_once_with(
-            tables=['course_overviews_courseoverview'],
-            where=[f'course_overviews_courseoverview.id = {enrollment_table}.courserun_key'],
-            select={'course_passing_grade': 'course_overviews_courseoverview.lowest_passing_grade'},
-        )
-        self.assertEqual(result, with_joined_course_metadata)
+        mock_course_overview.objects.filter.assert_not_called()
+        mock_cache.set.assert_not_called()
+
+    @mock.patch('enterprise_data.api.v1.views.enterprise_learner.cache')
+    @mock.patch('enterprise_data.api.v1.views.enterprise_learner.connection.introspection.table_names')
+    @mock.patch('enterprise_data.api.v1.views.enterprise_learner.CourseOverview')
+    def test_enrich_course_passing_grade_fetches_and_caches_missing_grade(
+        self,
+        mock_course_overview,
+        mock_table_names,
+        mock_cache,
+    ):
+        viewset = EnterpriseLearnerEnrollmentViewSet()
+        mock_course_overview._meta.db_table = 'course_overviews_courseoverview'
+        mock_table_names.return_value = ['course_overviews_courseoverview']
+        mock_cache.get.return_value = mock.Mock(is_found=False)
+        mock_course_overview.objects.filter.return_value.values_list.return_value = [
+            ('course-v1:edX+Demo+2024', 0.7),
+        ]
+        rows = [{'courserun_key': 'course-v1:edX+Demo+2024', 'course_passing_grade': None}]
+
+        result = viewset._enrich_course_passing_grade_rows(rows)  # pylint: disable=protected-access
+
+        self.assertEqual(result[0]['course_passing_grade'], 0.7)
+        mock_table_names.assert_called_once_with()
+        mock_course_overview.objects.filter.assert_called_once_with(id__in=['course-v1:edX+Demo+2024'])
+        mock_cache.set.assert_called_once()
 
 
 @ddt.ddt

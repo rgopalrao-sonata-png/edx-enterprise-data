@@ -26,6 +26,7 @@ from django.db.models.functions import Coalesce
 from django.http import StreamingHttpResponse
 from django.utils import timezone
 
+from enterprise_data import cache
 from enterprise_data.api.v1 import serializers
 from enterprise_data.clients import EnterpriseApiClient
 from enterprise_data.exceptions import EnterpriseApiClientException
@@ -41,6 +42,7 @@ LOGGER = getLogger(__name__)
 
 
 DEFAULT_LEARNER_CACHE_TIMEOUT = 60 * 10
+DEFAULT_COURSE_PASSING_GRADE_CACHE_TIMEOUT = 60 * 60 * 6
 
 
 class EnterpriseLearnerEnrollmentViewSet(EnterpriseViewSetMixin, viewsets.ReadOnlyModelViewSet):
@@ -115,28 +117,14 @@ class EnterpriseLearnerEnrollmentViewSet(EnterpriseViewSetMixin, viewsets.ReadOn
         """
         Build the enrollments queryset and include synthetic metadata fields.
 
-        Adds ``course_progress`` as a placeholder and joins CourseOverview for
-        ``course_passing_grade`` when the CourseOverview table is present.
+        Adds placeholders for fields enriched after serialization. Keeping the
+        base queryset ORM-only avoids a per-request CourseOverview join and
+        lets the enrichment path use a reusable cache.
         """
         enrollments = EnterpriseLearnerEnrollment.objects.filter(
             enterprise_customer_uuid=enterprise_customer_uuid
         ).extra(select={'course_progress': 'NULL'})
-
-        if CourseOverview is None:
-            return enrollments.extra(select={'course_passing_grade': 'NULL'})
-
-        course_overview_table = CourseOverview._meta.db_table
-        has_course_overview_table = course_overview_table in connection.introspection.table_names()
-        if not has_course_overview_table:
-            return enrollments.extra(select={'course_passing_grade': 'NULL'})
-
-        # Use an explicit INNER JOIN to fetch passing grade from CourseOverview.
-        enrollment_table = EnterpriseLearnerEnrollment._meta.db_table
-        return enrollments.extra(
-            tables=[course_overview_table],
-            where=[f'{course_overview_table}.id = {enrollment_table}.courserun_key'],
-            select={'course_passing_grade': f'{course_overview_table}.lowest_passing_grade'},
-        )
+        return enrollments.extra(select={'course_passing_grade': 'NULL'})
 
     def list(self, request, *args, **kwargs):
         """
@@ -156,13 +144,13 @@ class EnterpriseLearnerEnrollmentViewSet(EnterpriseViewSetMixin, viewsets.ReadOn
 
     def _enrich_course_progress_rows(self, rows):
         """
-        Enrich serialized enrollment rows with ``course_progress`` fetched from
-        Snowflake's internal LPR table.
+        Enrich serialized enrollment rows with cached course metadata.
 
         Accepts a list-like collection of serialized row dicts and mutates each
         matching row in place. Silently skips enrichment on any error so the
         ORM-backed response is always returned intact.
         """
+        self._enrich_course_passing_grade_rows(rows)
         try:
             if not rows:
                 return rows
@@ -170,7 +158,7 @@ class EnterpriseLearnerEnrollmentViewSet(EnterpriseViewSetMixin, viewsets.ReadOn
             progress_map = SnowflakeCourseProgressSource().get_course_progress_map(enterprise_uuid, rows)
             for row in rows:
                 key = (
-                    row.get('user_email', '').strip(),
+                    row.get('user_email', '').strip().lower(),
                     row.get('courserun_key', '').strip(),
                 )
                 if key in progress_map:
@@ -178,6 +166,77 @@ class EnterpriseLearnerEnrollmentViewSet(EnterpriseViewSetMixin, viewsets.ReadOn
             return rows
         except Exception:  # pylint: disable=broad-exception-caught
             LOGGER.warning('Could not enrich course_progress from Snowflake', exc_info=True)
+            return rows
+
+    @staticmethod
+    def _course_passing_grade_cache_timeout():
+        """Return the configurable TTL for CourseOverview passing-grade cache entries."""
+        return getattr(
+            settings,
+            'LPR_COURSE_PASSING_GRADE_CACHE_TIMEOUT',
+            DEFAULT_COURSE_PASSING_GRADE_CACHE_TIMEOUT,
+        )
+
+    @staticmethod
+    def _course_passing_grade_cache_key(courserun_key):
+        """Return the cache key for a CourseOverview passing grade."""
+        return cache.get_key('lpr_course_passing_grade', courserun_key)
+
+    @staticmethod
+    def _course_overview_table_exists():
+        """Return whether CourseOverview can be queried in this runtime."""
+        if CourseOverview is None:
+            return False
+        return CourseOverview._meta.db_table in connection.introspection.table_names()
+
+    def _enrich_course_passing_grade_rows(self, rows):
+        """
+        Enrich serialized enrollment rows with cached CourseOverview passing grades.
+        """
+        try:
+            if not rows or not self._course_overview_table_exists():
+                return rows
+
+            courserun_keys = sorted({
+                row.get('courserun_key', '').strip()
+                for row in rows
+                if row.get('courserun_key')
+            })
+            if not courserun_keys:
+                return rows
+
+            passing_grade_map = {}
+            missing_courserun_keys = []
+            for courserun_key in courserun_keys:
+                cached_response = cache.get(self._course_passing_grade_cache_key(courserun_key))
+                if cached_response.is_found:
+                    passing_grade_map[courserun_key] = cached_response.value
+                else:
+                    missing_courserun_keys.append(courserun_key)
+
+            if missing_courserun_keys:
+                fetched_grades = dict(
+                    CourseOverview.objects.filter(id__in=missing_courserun_keys).values_list(
+                        'id',
+                        'lowest_passing_grade',
+                    )
+                )
+                for courserun_key in missing_courserun_keys:
+                    passing_grade = fetched_grades.get(courserun_key)
+                    passing_grade_map[courserun_key] = passing_grade
+                    cache.set(
+                        self._course_passing_grade_cache_key(courserun_key),
+                        passing_grade,
+                        timeout=self._course_passing_grade_cache_timeout(),
+                    )
+
+            for row in rows:
+                courserun_key = row.get('courserun_key', '').strip()
+                if courserun_key in passing_grade_map:
+                    row['course_passing_grade'] = passing_grade_map[courserun_key]
+            return rows
+        except Exception:  # pylint: disable=broad-exception-caught
+            LOGGER.warning('Could not enrich course_passing_grade from CourseOverview', exc_info=True)
             return rows
 
     def _enrich_course_progress(self, response):
