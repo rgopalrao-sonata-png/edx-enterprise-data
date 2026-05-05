@@ -19,6 +19,7 @@ Optional Django settings (with defaults)
   LPR_SNOWFLAKE_INTERNAL_TABLE       = 'LEARNER_PROGRESS_REPORT_INTERNAL'
   LPR_SNOWFLAKE_WAREHOUSE            = None   (omitted from connection if not set)
   LPR_SNOWFLAKE_ROLE                 = None   (omitted from connection if not set)
+    LPR_COURSE_PROGRESS_CACHE_TIMEOUT  = 300    (5 minutes)
 """
 
 from logging import getLogger
@@ -30,7 +31,7 @@ from enterprise_data import cache
 
 LOGGER = getLogger(__name__)
 
-DEFAULT_COURSE_PROGRESS_CACHE_TIMEOUT = 60 * 60 * 6
+DEFAULT_COURSE_PROGRESS_CACHE_TIMEOUT = 60 * 5
 
 try:
     import snowflake.connector as snowflake_connector

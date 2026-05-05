@@ -5,7 +5,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from enterprise_data.api.v1.views.lpr_data_source_snowflake import SnowflakeCourseProgressSource
+from django.test import override_settings
+
+from enterprise_data.api.v1.views.lpr_data_source_snowflake import (
+    DEFAULT_COURSE_PROGRESS_CACHE_TIMEOUT,
+    SnowflakeCourseProgressSource,
+)
 
 ENTERPRISE_UUID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
 NORMALIZED_UUID = 'a1b2c3d4e5f67890abcdef1234567890'
@@ -68,6 +73,28 @@ class TestGetConnection:
         assert kwargs['account'] == 'myacct'
         assert kwargs['warehouse'] == 'COMPUTE_WH'
         assert kwargs['role'] == 'ANALYST'
+
+
+class TestCacheConfiguration:
+    """Tests for enterprise-scoped course progress cache configuration."""
+
+    def test_default_cache_timeout_is_five_minutes(self):
+        assert DEFAULT_COURSE_PROGRESS_CACHE_TIMEOUT == 300
+        assert _source()._cache_timeout() == 300
+
+    @override_settings(LPR_COURSE_PROGRESS_CACHE_TIMEOUT=120)
+    def test_cache_timeout_is_configurable(self):
+        assert _source()._cache_timeout() == 120
+
+    @patch('enterprise_data.api.v1.views.lpr_data_source_snowflake.cache.get_key', return_value='cache-key')
+    @patch.object(SnowflakeCourseProgressSource, '_internal_table', return_value=DEFAULT_TABLE)
+    def test_cache_key_scopes_by_table_and_normalized_enterprise(self, _table, mock_get_key):
+        assert _source()._cache_key(ENTERPRISE_UUID) == 'cache-key'
+        mock_get_key.assert_called_once_with(
+            'lpr_course_progress',
+            DEFAULT_TABLE,
+            NORMALIZED_UUID,
+        )
 
 
 class TestGetCourseProgressMap:
