@@ -1,0 +1,21 @@
+enterprise_data/tests/lpr/test_lpr_data_source_snowflake.py
+  s_4e36697760c34c::t_5221d34c53c7f2 30
+enterprise_data/api/v1/views/lpr_data_source_snowflake.py
+  s_4e36697760c34c::t_706727edb0b629 8,30,183,198,409
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "fb815d0fe2bc2751ad54c0bcff6acae61e5e194e",
+  "prompts": {},
+  "sessions": {
+    "s_4e36697760c34c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74fb4304-cb08-4882-b92e-cf24a29fe75a",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": null
+    }
+  }
+}
