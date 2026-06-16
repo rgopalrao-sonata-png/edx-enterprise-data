@@ -1,0 +1,21 @@
+CHANGELOG.rst
+  s_4e36697760c34c::t_08e2edb6c9ba97 16-18
+enterprise_data/__init__.py
+  s_4e36697760c34c::t_08e2edb6c9ba97 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "1b1f4100640ffa1fad2dbc2b07d312620a58a59e",
+  "prompts": {},
+  "sessions": {
+    "s_4e36697760c34c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74fb4304-cb08-4882-b92e-cf24a29fe75a",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "rgopalrao-sonata-png <rgopalrao-sonata@2u.com>"
+    }
+  }
+}
