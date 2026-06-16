@@ -1,0 +1,19 @@
+enterprise_data/api/v1/views/lpr_data_source_snowflake.py
+  s_4e36697760c34c::t_eb98cdbbc984d1 30,183,198,409
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "87a108de6f3521cde964e49f466e99c24b997686",
+  "prompts": {},
+  "sessions": {
+    "s_4e36697760c34c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74fb4304-cb08-4882-b92e-cf24a29fe75a",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "rgopalrao-sonata-png <rgopalrao-sonata@2u.com>"
+    }
+  }
+}
