@@ -1,0 +1,21 @@
+enterprise_data/api/v1/views/lpr_data_source_snowflake.py
+  s_4e36697760c34c::t_d42b95b964a96b 29
+CHANGELOG.rst
+  s_4e36697760c34c::t_e7d61a1a5c8306 17-19,21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "f1561df4b5811231d3e3a69009690662a80c073a",
+  "prompts": {},
+  "sessions": {
+    "s_4e36697760c34c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74fb4304-cb08-4882-b92e-cf24a29fe75a",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "rgopalrao-sonata-png <rgopalrao-sonata@2u.com>"
+    }
+  }
+}
