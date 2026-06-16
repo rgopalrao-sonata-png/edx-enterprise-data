@@ -1,0 +1,40 @@
+enterprise_data/api/v1/views/lpr_data_source_snowflake.py
+  s_823e076de80fa0::t_97e784d31cd7cb 168-170
+  s_4e36697760c34c::t_dd3ae3753cf1db 19,25,57,59,65-72,76,79,81,83-84,86,90-95,99,101,107-108,110-131,133-138,141
+  s_4e36697760c34c::t_31d77b199534a5 20
+  s_4e36697760c34c::t_706727edb0b629 8,30,183,198,409
+enterprise_data/tests/lpr/test_lpr_data_source_snowflake.py
+  s_4e36697760c34c::t_c0c78bf30da771 2,5,12,27-28,30-31,38,59,66,76,85,87-89,97,104,111,113-119,126,141-142,145,148-149,156-157,160-162,166,181,184,189-194,202-203,208-209,213-214,220-221,225-226,231-232,236,242-254,256,260-262,267,271-273,276,281-284,291-292,297-298,301-303,309-311,315-320,325-326,330-333,337-338,343-344,348,357,364,366-369,376,397-400,408,415,419,422,424,427-438,446,448,452,454-457,459-470,474-475,492,494-505,510,513,516,519-530,535,538,543-554,559,569-580,585,588-590,592,594,596-606,610,615-625,627,630-631,636-648,653,656,659,662,665-760
+enterprise_reporting/clients/snowflake.py
+  s_4e36697760c34c::t_c0c78bf30da771 6-7,9,11,13-16,18-28,30-38,40-41,43-47,49-83,85,93
+enterprise_reporting/tests/test_clients.py
+  s_4e36697760c34c::t_c0c78bf30da771 5,11,215-331
+CHANGELOG.rst
+  s_4e36697760c34c::t_c0c78bf30da771 16-18
+enterprise_data/__init__.py
+  s_4e36697760c34c::t_c0c78bf30da771 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "87b6e452138ec4cf6ff26085c6fdeb58ccfd578c",
+  "prompts": {},
+  "sessions": {
+    "s_4e36697760c34c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74fb4304-cb08-4882-b92e-cf24a29fe75a",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "rgopalrao-sonata-png <rgopalrao-sonata@2u.com>"
+    },
+    "s_823e076de80fa0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4eae20b4-691a-4b53-85fb-d65e515666fd",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "rgopalrao-sonata-png <rgopalrao-sonata@2u.com>"
+    }
+  }
+}
