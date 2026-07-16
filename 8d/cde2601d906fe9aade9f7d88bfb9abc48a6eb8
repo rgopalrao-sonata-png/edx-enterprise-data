@@ -1,0 +1,33 @@
+enterprise_data/tests/test_utils.py
+  s_8dff121f44b3c9::t_b506fcf7b18279 138
+enterprise_data/tests/api/v1/test_views.py
+  s_72bcd4856365a4::t_fbe68b1b2efced 240-262
+  s_8dff121f44b3c9::t_ac81da5cc00dec 360-363
+enterprise_data/api/v1/views/enterprise_learner.py
+  s_72bcd4856365a4::t_a996cf233742f7 400-403
+  s_8dff121f44b3c9::t_a9137f115198cf 104-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "8dcde2601d906fe9aade9f7d88bfb9abc48a6eb8",
+  "prompts": {},
+  "sessions": {
+    "s_72bcd4856365a4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4bb0a0b7-bef7-4ad5-b3a1-db08462772c3",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": null
+    },
+    "s_8dff121f44b3c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ebdf67c8-8eaa-4073-830f-9f4307df4984",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "rgopalrao-sonata-png <rgopalrao-sonata@2u.com>"
+    }
+  }
+}
