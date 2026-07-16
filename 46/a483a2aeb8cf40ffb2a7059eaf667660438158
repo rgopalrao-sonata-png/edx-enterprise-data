@@ -1,0 +1,34 @@
+enterprise_data/api/v1/views/enterprise_learner.py
+  s_8dff121f44b3c9::t_a9137f115198cf 104-105
+  s_72bcd4856365a4::t_a996cf233742f7 400-403
+enterprise_data/tests/api/v1/test_views.py
+  s_72bcd4856365a4::t_0de9efba66f2cb 240-270
+  s_8dff121f44b3c9::t_ac81da5cc00dec 391-394
+  s_72bcd4856365a4::t_fbe68b1b2efced 271-293
+enterprise_data/tests/test_utils.py
+  s_8dff121f44b3c9::t_b506fcf7b18279 138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "46a483a2aeb8cf40ffb2a7059eaf667660438158",
+  "prompts": {},
+  "sessions": {
+    "s_72bcd4856365a4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4bb0a0b7-bef7-4ad5-b3a1-db08462772c3",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": null
+    },
+    "s_8dff121f44b3c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ebdf67c8-8eaa-4073-830f-9f4307df4984",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "rgopalrao-sonata-png <rgopalrao-sonata@2u.com>"
+    }
+  }
+}
